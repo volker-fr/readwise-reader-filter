@@ -1,0 +1,164 @@
+# ============================================================================
+# Readwise Reader Filter - Example Configuration
+# ============================================================================
+#
+# NOTE: This tool filters entries from Readwise Reader (read.readwise.io),
+#       not from Readwise (readwise.io). Only the "feed" location is supported.
+#       Entries in archive, later, inbox, etc. are NOT affected.
+#
+#
+# FILTER RULES
+# Each rule can filter on: title, summary, content, url, tags_include, tags_exclude, age
+# Multiple filter fields in a rule are combined with AND logic.
+#
+# String Filters (title, summary, content, url):
+#   contains:      ALL substrings must be present (case-insensitive)
+#   contains_any:  AT LEAST ONE substring must be present
+#   matches:       ALL regex patterns must match (case-insensitive)
+#   exclude_with:  NONE of these substrings may be present
+#
+# String filters apply to the article title, body text (summary),
+# full article HTML (content), or URL.
+#
+# Example entry from Readwise Reader (fields you can filter on):
+#   title:       "Why AI Will Not Replace Developers"
+#   summary:     "In this article we explore the reasons why AI is unlikely..."
+#   html_content: "<div><h1>Why AI Will Not Replace...</h1><p>Full article HTML...</p></div>"
+#   source_url:  "https://example.com/blog/ai-wont-replace-devs"
+#   author:      "Jane Smith"
+#   site_name:   "TechBlog"
+#   category:    "article"
+#   tags:        ["ai", "development"]
+#
+# Title examples:
+#   title: { contains: ["AI", "LLM"] }         # title must contain both "AI" AND "LLM"
+#   title: { contains_any: ["AI", "ML"] }       # title must contain "AI" OR "ML"
+#   title: { matches: ["^RE:.*urgent$"] }       # regex: starts with "RE:" and ends with "urgent"
+#   title: { exclude_with: ["spam", "ad"] }     # title must NOT contain "spam" or "ad"
+#
+# Body/summary examples:
+#   summary: { contains: ["machine learning"] } # body must contain "machine learning"
+#   summary: { contains_any: ["buy now", "order today"] }  # body must contain one of these
+#   summary: { exclude_with: ["unsubscribe"] }  # body must NOT contain "unsubscribe"
+#
+# Content examples (full article HTML body):
+#   content: { contains: ["deep learning"] }    # article body must contain "deep learning"
+#   content: { matches: ["<h[12]>.*tutorials"] } # regex on HTML content
+#
+# Source Matching (feeds[].match):
+#   site_names:    match by site name
+#   authors:       match by author
+#   domains:      match by domain (e.g. "youtube.com", "substack.com")
+#   categories:    match by category
+#
+# Actions: delete, mark_for_delete, archive, seen, unseen
+#
+#   delete:          Hard-deletes the entry from Readwise Reader.
+#   mark_for_delete: Soft-delete: adds "delete" tag, moves to "later".
+#                    Entry is still accessible but flagged for review.
+#   archive:         Moves the entry to the Archive location.
+#   seen:            Marks entry as seen (sets first_opened_at).
+#   unseen:          Marks entry as unseen (clears first_opened_at).
+#
+# Read filter:
+#   read: true     — match only entries that have been seen (first_opened_at is set)
+#   read: false    — match only entries that have NOT been seen
+#
+# mark_all_as_unseen (top-level):
+#   mark_all_as_unseen: true — mark all feed entries as unseen in bulk
+#   WARNING: Only entries previously seen by this tool will be affected.
+#            Manually opened entries via Readwise UI may not be marked.
+# ============================================================================
+
+# ============================================================================
+# CONFIG SECTIONS
+# ============================================================================
+#
+# global: Rules that apply to ALL entries, regardless of feed source.
+#         These are useful for universal filters like blocking sponsored content.
+#         When a global rule and a feed rule both match and have the same action,
+#         the global rule wins (this is called "tie-breaking").
+#
+# feeds: Feed-specific rules that only apply to entries matching the feed's
+#        `match` criteria (by site name, author, domain, or category).
+#
+# mark_all_as_unseen: Bulk-mark all feed entries as unseen (clears
+#         first_opened_at). Only affects entries previously seen by this tool.
+#
+# ============================================================================
+global:
+  - name: "Block sponsored content"
+    title:
+      matches:
+        - "^\\[sponsored\\]"
+        - "^\\[ad\\]"
+        - "^\\(sponsored\\)"
+    action: delete
+
+feeds:
+  - name: "KinoCheck"
+    match:
+      authors: ["KinoCheck"]
+    rules:
+      - name: "Delete featurettes"
+        title:
+          contains_any:
+            - "Featurette"
+            - "Making Of"
+            - "Interview"
+        action: delete
+
+      - name: "Archive older trailers"
+        age:
+          older_than_days: 14
+        action: archive
+
+  - name: "YouTube"
+    match:
+      domains: ["youtube.com"]
+    rules:
+      - name: "Block shorts"
+        url:
+          contains: ["/shorts/"]
+        action: delete
+
+  - name: "Tech newsletters"
+    match:
+      site_names: ["Substack"]
+    rules:
+      - name: "Delete old non-AI newsletters"
+        age:
+          older_than_days: 7
+        title:
+          exclude_with:
+            - "AI"
+            - "LLM"
+            - "machine learning"
+        action: delete
+
+      - name: "Archive AI-related"
+        title:
+          contains_any:
+            - "AI"
+            - "LLM"
+            - "machine learning"
+        action: archive
+
+      - name: "Archive newsletters with product recommendations"
+        summary:
+          contains_any:
+            - "check out"
+            - "we recommend"
+            - "our top pick"
+        action: archive
+
+      - name: "Archive newsletters mentioning specific tools in body"
+        content:
+          contains_any:
+            - "Notion"
+            - "Obsidian"
+            - "Roam Research"
+        action: archive
+
+# Bulk-mark all feed entries as unseen
+# mark_all_as_unseen: true
