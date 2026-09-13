@@ -64,6 +64,13 @@ pip install .
 | `age`          | `older_than_days` — entry must be older than N days      |
 | `read`         | `true` = match seen entries, `false` = match unseen entries |
 
+Feed `match` fields (`site_names`, `authors`, `categories`) accept either a
+plain list (exact, case-insensitive match against any value) or the same
+filter dict as above for substring/regex matching, e.g.
+`authors: { contains: ["Smith"] }` or `authors: { matches: ["^J\\. R\\.$"] }`.
+`domains` keeps its exact/subdomain matching (`"youtube.com"` also matches
+`"www.youtube.com"`).
+
 ## Action resolution
 
 If an entry matches multiple rules (e.g. both a global rule and a

@@ -110,6 +110,19 @@ def entry_matches_source(
 
     reasons = []
 
+    for fld, entry_val, filter_attr in (
+        ("site_names", entry.site_name, "site_names_filter"),
+        ("authors", entry.author, "authors_filter"),
+        ("categories", entry.category, "categories_filter"),
+    ):
+        sf = getattr(match, filter_attr)
+        if sf is not None:
+            ok, r = check_string_filter(entry_val or "", sf, field_name=fld)
+            reasons.extend(r)
+            if not ok:
+                return False, reasons
+            reasons.append(f"source.{fld} matched: {entry_val}")
+
     if match.site_names:
         if entry.site_name.lower() not in {s.lower() for s in match.site_names}:
             reasons.append(

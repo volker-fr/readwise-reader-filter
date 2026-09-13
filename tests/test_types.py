@@ -191,3 +191,16 @@ class TestSourceMatchPostInit:
         sm = SourceMatch()
         assert sm.site_names is None
         assert sm.authors is None
+
+    def test_filter_dict_routed_to_filter_fields(self):
+        sm = SourceMatch(
+            site_names={"contains": ["tube"]},
+            authors={"matches": [r"^alice"]},
+            categories={"contains": ["rss"]},
+        )
+        assert sm.site_names is None
+        assert sm.authors is None
+        assert sm.categories is None
+        assert isinstance(sm.site_names_filter, StringFilter)
+        assert isinstance(sm.authors_filter, StringFilter)
+        assert isinstance(sm.categories_filter, StringFilter)

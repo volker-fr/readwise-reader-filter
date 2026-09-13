@@ -145,11 +145,77 @@ class TestSourceMatch:
         assert ok
         assert not entry_matches_source(entry, SourceMatch(site_names=["Twitter"]))[0]
 
+    def test_site_names_substring_regex(self):
+        entry = _entry(site_name="YouTube · Channel")
+        ok, _ = entry_matches_source(
+            entry, SourceMatch(site_names={"contains": ["channel"]})
+        )
+        assert ok
+        ok, _ = entry_matches_source(
+            entry, SourceMatch(site_names={"matches": [r"^youtube"]})
+        )
+        assert ok
+        assert not entry_matches_source(
+            entry, SourceMatch(site_names={"matches": [r"^twitter"]})
+        )[0]
+
     def test_authors(self):
         entry = _entry(author="Alice")
         ok, _ = entry_matches_source(entry, SourceMatch(authors=["Alice"]))
         assert ok
         assert not entry_matches_source(entry, SourceMatch(authors=["Bob"]))[0]
+
+    def test_authors_substring(self):
+        entry = _entry(author="Traffic Tracker | Example News")
+        ok, _ = entry_matches_source(
+            entry, SourceMatch(authors={"contains": ["example news"]})
+        )
+        assert ok
+        ok, _ = entry_matches_source(
+            entry, SourceMatch(authors={"contains": ["wall street"]})
+        )
+        assert not ok
+
+    def test_authors_regex(self):
+        entry = _entry(author="Traffic Tracker | Example News")
+        ok, _ = entry_matches_source(
+            entry, SourceMatch(authors={"matches": [r"^traffic tracker \| .*"]})
+        )
+        assert ok
+        ok, _ = entry_matches_source(
+            entry, SourceMatch(authors={"matches": [r"^wall street"]})
+        )
+        assert not ok
+
+    def test_filter_dict_routed_to_filter_fields(self):
+        sm = SourceMatch(
+            site_names={"contains": ["tube"]},
+            authors={"contains": ["alice"]},
+            categories={"matches": [r"^rss"]},
+        )
+        assert sm.site_names is None
+        assert sm.authors is None
+        assert sm.categories is None
+        assert sm.site_names_filter is not None
+        assert sm.authors_filter is not None
+        assert sm.categories_filter is not None
+
+    def test_authors_exclude_with(self):
+        entry = _entry(author="Traffic Tracker | Example News")
+        ok, _ = entry_matches_source(
+            entry,
+            SourceMatch(
+                authors={"contains": ["example"], "exclude_with": ["podcast"]}
+            ),
+        )
+        assert ok
+        ok, _ = entry_matches_source(
+            entry,
+            SourceMatch(
+                authors={"contains": ["example"], "exclude_with": ["traffic"]}
+            ),
+        )
+        assert not ok
 
     def test_domains(self):
         entry = _entry(source_url="https://www.youtube.com/watch?v=123")
@@ -166,6 +232,20 @@ class TestSourceMatch:
         ok, _ = entry_matches_source(entry, SourceMatch(categories=["rss"]))
         assert ok
         assert not entry_matches_source(entry, SourceMatch(categories=["email"]))[0]
+
+    def test_categories_substring_regex(self):
+        entry = _entry(category="RSS feed")
+        ok, _ = entry_matches_source(
+            entry, SourceMatch(categories={"contains": ["feed"]})
+        )
+        assert ok
+        ok, _ = entry_matches_source(
+            entry, SourceMatch(categories={"matches": [r"^rss"]})
+        )
+        assert ok
+        assert not entry_matches_source(
+            entry, SourceMatch(categories={"matches": [r"^email"]})
+        )[0]
 
     def test_all_set_fields_must_match(self):
         entry = _entry(site_name="YouTube", author="Alice")

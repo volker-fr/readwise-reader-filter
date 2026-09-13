@@ -383,6 +383,51 @@ class TestValidateConfig:
         assert len(errors) == 1
         assert "must contain only strings" in errors[0]
 
+    def test_source_match_string_filter_form(self):
+        data = {
+            "feeds": [
+                {
+                    "name": "test",
+                    "match": {
+                        "site_names": {"contains": ["tube"]},
+                        "authors": {"matches": [r"^alice"]},
+                        "categories": {"matches": [r"^rss$"], "exclude_with": ["spam"]},
+                    },
+                    "rules": [],
+                }
+            ]
+        }
+        errors = _validate_config(data)
+        assert errors == []
+
+    def test_source_match_string_filter_invalid_regex(self):
+        data = {
+            "feeds": [
+                {
+                    "name": "test",
+                    "match": {"authors": {"matches": ["[invalid"]}},
+                    "rules": [],
+                }
+            ]
+        }
+        errors = _validate_config(data)
+        assert len(errors) == 1
+        assert "invalid regex" in errors[0]
+
+    def test_source_match_field_bad_type_message(self):
+        data = {
+            "feeds": [
+                {
+                    "name": "test",
+                    "match": {"site_names": 42},
+                    "rules": [],
+                }
+            ]
+        }
+        errors = _validate_config(data)
+        assert len(errors) == 1
+        assert "'site_names' must be a list, dict, or omitted" in errors[0]
+
 
 # ── validate_config (public API) ──────────────────────────────────
 
@@ -463,6 +508,27 @@ class TestFromDict:
         assert config.feeds[0].name == "YouTube"
         assert config.feeds[0].match is not None
         assert len(config.feeds[0].rules) == 1
+
+    def test_feed_match_string_filter_form(self):
+        data = {
+            "feeds": [
+                {
+                    "name": "DMN",
+                    "match": {
+                        "site_names": {"contains": ["news"]},
+                        "authors": {"matches": [r"^example"]},
+                    },
+                    "rules": [{"name": "rule1", "action": "archive"}],
+                }
+            ]
+        }
+        config = _from_dict(data)
+        match = config.feeds[0].match
+        assert match.authors is None
+        assert match.authors_filter is not None
+        assert match.authors_filter.matches == [r"^example"]
+        assert match.site_names is None
+        assert match.site_names_filter is not None
 
     def test_feed_without_match(self):
         data = {

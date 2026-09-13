@@ -83,14 +83,32 @@ class SourceMatch:
 
     If all fields are None (empty match), it matches every entry.
     If any field is set, ALL set fields must match for the entry to belong.
+
+    site_names, authors, and categories accept either an exact-match list
+    or a StringFilter (dict form with contains/contains_any/matches/
+    exclude_with for substring/regex). domains keeps its subdomain logic.
     """
 
-    site_names: list[str] | None = None
-    authors: list[str] | None = None
+    site_names: list[str] | StringFilter | dict | None = None
+    authors: list[str] | StringFilter | dict | None = None
     domains: list[str] | None = None
-    categories: list[str] | None = None
+    categories: list[str] | StringFilter | dict | None = None
+    site_names_filter: StringFilter | None = None
+    authors_filter: StringFilter | None = None
+    categories_filter: StringFilter | None = None
 
     def __post_init__(self):
+        for fld, filter_attr in (
+            ("site_names", "site_names_filter"),
+            ("authors", "authors_filter"),
+            ("categories", "categories_filter"),
+        ):
+            val = getattr(self, fld)
+            if isinstance(val, dict):
+                val = StringFilter(**val)
+            if isinstance(val, StringFilter):
+                setattr(self, filter_attr, val)
+                setattr(self, fld, None)
         _normalize_str_list_fields(
             self, ("site_names", "authors", "domains", "categories")
         )

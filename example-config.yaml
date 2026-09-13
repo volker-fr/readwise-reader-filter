@@ -15,6 +15,8 @@
 #   contains:      ALL substrings must be present (case-insensitive)
 #   contains_any:  AT LEAST ONE substring must be present
 #   matches:       ALL regex patterns must match (case-insensitive)
+#                  NOTE: no "RE:" prefix, and there is NO matches_any key.
+#                  For OR semantics use alternation: ["Pikachu|Charizard"]
 #   exclude_with:  NONE of these substrings may be present
 #
 # String filters apply to the article title, body text (summary),
@@ -45,11 +47,27 @@
 #   content: { contains: ["deep learning"] }    # article body must contain "deep learning"
 #   content: { matches: ["<h[12]>.*tutorials"] } # regex on HTML content
 #
+# Age examples:
+#   age: { older_than_days: 14 }                # entry created more than 14 days ago
+#                                               # DAYS only (weeks * 7), must be >= 1;
+#                                               # entries without a created_at date never
+#                                               # match. Combines (AND) with other filters.
+#
 # Source Matching (feeds[].match):
 #   site_names:    match by site name
 #   authors:       match by author
 #   domains:      match by domain (e.g. "youtube.com", "substack.com")
 #   categories:    match by category
+#
+# site_names, authors, and categories accept either a plain list (exact,
+# case-insensitive match against any value) or a filter dict for substring
+# and regex matching (same keys as rule fields):
+#   authors: ["Alice"]                          # exact match: "Alice" or "ALICE"
+#   authors: { contains: ["Smith"] }            # author contains "Smith"
+#   authors: { matches: ["^Traffic Tracker \\| .*"] }  # regex, case-insensitive
+#   site_names: { contains: ["YouTube"] }
+#   categories: { matches: ["^rss$"] }
+# All checks are case-insensitive; multiple keys in the dict are AND-ed.
 #
 # Actions: delete, mark_for_delete, archive, seen, unseen
 #
@@ -121,6 +139,16 @@ feeds:
         url:
           contains: ["/shorts/"]
         action: delete
+
+  - name: "Example News"
+    match:
+      authors:
+        contains: ["Example News"]
+    rules:
+      - name: "Archive news briefs"
+        title:
+          contains: ["briefing"]
+        action: archive
 
   - name: "Tech newsletters"
     match:

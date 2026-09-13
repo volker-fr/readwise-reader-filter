@@ -112,17 +112,27 @@ def _check_age_filter(d: dict, label: str, prefix: str) -> list[str]:
 
 def _check_source_match(d: dict, label: str, prefix: str) -> list[str]:
     errors = _check_keys(d, KNOWN_SOURCE_MATCH_KEYS, label, prefix)
-    for fld in ("site_names", "authors", "domains", "categories"):
+    for fld in ("site_names", "authors", "categories"):
         val = d.get(fld)
-        if val is None:
-            continue
-        if not isinstance(val, list):
+        if isinstance(val, dict):
+            errors.extend(_validate_string_filter(val, f"{fld} filter", prefix))
+        elif val is not None:
+            if not isinstance(val, list):
+                errors.append(
+                    f"{prefix}'{fld}' must be a list, dict, or omitted, "
+                    f"got {type(val).__name__}"
+                )
+            elif not all(isinstance(v, str) for v in val if v is not None):
+                errors.append(f"{prefix}'{fld}' must contain only strings")
+
+    domains = d.get("domains")
+    if domains is not None:
+        if not isinstance(domains, list):
             errors.append(
-                f"{prefix}'{fld}' must be a list, got {type(val).__name__}"
+                f"{prefix}'domains' must be a list, got {type(domains).__name__}"
             )
-            continue
-        if not all(isinstance(v, str) for v in val if v is not None):
-            errors.append(f"{prefix}'{fld}' must contain only strings")
+        elif not all(isinstance(v, str) for v in domains if v is not None):
+            errors.append(f"{prefix}'domains' must contain only strings")
     return errors
 
 
@@ -374,10 +384,14 @@ def _from_dict(data: dict) -> FilterConfig:
                 f"got {type(raw_rules).__name__}"
             )
         rules = [FilterRule(**_coerce_rule_dict(r)) for r in raw_rules]
+        match_kwargs = dict(match_data) if match_data else {}
+        for fld in ("site_names", "authors", "categories"):
+            if isinstance(match_kwargs.get(fld), dict):
+                match_kwargs[fld] = StringFilter(**match_kwargs[fld])
         feeds.append(
             FeedDefinition(
                 name=fd.get("name", ""),
-                match=SourceMatch(**match_data) if match_data else None,
+                match=SourceMatch(**match_kwargs) if match_data else None,
                 rules=rules,
             )
         )
